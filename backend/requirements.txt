@@ -1,0 +1,15 @@
+fastapi
+uvicorn[standard]
+pydantic
+pydantic-settings
+python-multipart
+supabase
+sentence-transformers
+groq
+httpx
+pdfplumber
+python-docx
+python-pptx
+beautifulsoup4
+moviepy
+google-generativeai
