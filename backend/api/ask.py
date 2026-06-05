@@ -6,7 +6,8 @@ from typing import Optional
 
 from core.ocr import extract_text_from_image
 from core.rag import retrieve_context
-from core.router import route_course_to_model
+from core.question_classifier import classify_question
+from core.counciler import get_best_model
 from core.llm import generate_answer
 from db.supabase import get_supabase_client
 
@@ -23,7 +24,7 @@ async def ask_question(
     Endpoint for asking a question. Supports an image upload or direct text.
     1. Extracts text from image if provided.
     2. Retrieves relevant context from vector DB.
-    3. Routes to the optimal LLM based on the agent's course.
+    3. Runs Chacha Counciler to analyze question and pick best LLM.
     4. Generates and returns the answer.
     """
     if not image and not text_question:
@@ -42,7 +43,6 @@ async def ask_question(
             temp_path = temp_file.name
             
         try:
-            # Extract text from the image, specifically prompting for the question
             extracted = extract_text_from_image(temp_path, is_question=True)
             if extracted:
                 question_text = f"{extracted}\n\n{question_text}".strip()
@@ -53,7 +53,7 @@ async def ask_question(
     if not question_text:
         raise HTTPException(status_code=400, detail="Could not extract any text from the question.")
 
-    # 2. Get Agent Details (to know subject for routing)
+    # 2. Get Agent Details
     agent_res = supabase.table("agents").select("*").eq("id", agent_id).execute()
     if not agent_res.data:
         raise HTTPException(status_code=404, detail="Agent not found.")
@@ -62,8 +62,9 @@ async def ask_question(
     # 3. Retrieve Context from Vector DB
     context = retrieve_context(agent_id, question_text, top_k=5)
     
-    # 4. Route to optimal LLM
-    model_id = route_course_to_model(agent.get("category", ""))
+    # 4. CHACHA COUNCILER: Dynamically classify and select best model
+    q_class = classify_question(question_text)
+    model_id = get_best_model(agent.get("category", ""), q_class)
     
     # 5. Generate Answer
     answer = generate_answer(question_text, context, model_id)

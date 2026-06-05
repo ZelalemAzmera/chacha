@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import os
-from api import materials, ask
+from api import materials, ask, agents
 
 app = FastAPI(
     title="Chacha Backend",
@@ -20,6 +20,7 @@ app.add_middleware(
 
 app.include_router(materials.router)
 app.include_router(ask.router)
+app.include_router(agents.router)
 
 @app.get("/")
 def read_root():
